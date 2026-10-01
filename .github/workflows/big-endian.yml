@@ -1,0 +1,125 @@
+name: Big-endian crypto test
+
+# Cross-builds the console VeraCrypt for s390x (64-bit big-endian) and runs
+# it under qemu-user: the algorithm self-tests, the official test volumes
+# (created on little-endian) and volume interop with an amd64 build.
+# Upstream master is expected to fail the self-tests on big-endian; the
+# branch with the fix (veracrypt/VeraCrypt#1899) is expected to pass.
+
+on:
+  push:
+    branches: [ "ci-big-endian" ]
+  workflow_dispatch:
+
+env:
+  WXWIDGETS_VERSION: 3.2.10
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: s390x-master, arch: s390x, repo: veracrypt/VeraCrypt, ref: master, expect: fail }
+          - { name: s390x-fix, arch: s390x, repo: flatstik/VeraCrypt, ref: big-endian-ciphers, expect: pass }
+          - { name: amd64-fix, arch: amd64, repo: flatstik/VeraCrypt, ref: big-endian-ciphers, expect: pass }
+    name: ${{ matrix.name }}
+    steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Checkout VeraCrypt (${{ matrix.repo }}@${{ matrix.ref }})
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: vc
+
+      - name: Install build dependencies (s390x cross)
+        if: matrix.arch == 's390x'
+        run: |
+          sudo sed -i 's/^Types: deb$/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates\nComponents: main universe\nArchitectures: s390x\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/ports.sources
+          sudo dpkg --add-architecture s390x
+          sudo apt-get update
+          sudo apt-get install -y g++-s390x-linux-gnu qemu-user-static \
+            libfuse3-dev:s390x libpcsclite-dev:s390x libstdc++6:s390x libgcc-s1:s390x
+
+      - name: Install build dependencies (amd64)
+        if: matrix.arch == 'amd64'
+        run: sudo apt-get update && sudo apt-get install -y libfuse3-dev libpcsclite-dev yasm
+
+      - name: Fetch wxWidgets
+        run: |
+          wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v${WXWIDGETS_VERSION}/wxWidgets-${WXWIDGETS_VERSION}.tar.bz2
+          tar -xjf wxWidgets-${WXWIDGETS_VERSION}.tar.bz2
+
+      - name: Build console VeraCrypt
+        run: |
+          W=$PWD/wxWidgets-${WXWIDGETS_VERSION}
+          set -- NOGUI=1 WITHFUSE3=1 WXSTATIC=1 NOTEST=1 WX_ROOT=$W WX_BUILD_DIR=$PWD/wxbuild
+          if [ "${{ matrix.arch }}" = s390x ]; then
+            set -- "$@" ARCH=s390x NOSTRIP=1 \
+              CC=s390x-linux-gnu-gcc CXX=s390x-linux-gnu-g++ AR=s390x-linux-gnu-ar RANLIB=s390x-linux-gnu-ranlib \
+              WX_CONFIGURE_EXTRA_FLAGS="--host=s390x-linux-gnu --build=x86_64-linux-gnu"
+            # $(shell pkg-config ...) in make only sees the environment
+            export PKG_CONFIG_LIBDIR=/usr/lib/s390x-linux-gnu/pkgconfig:/usr/share/pkgconfig
+            export PKG_CONFIG_PATH=$PKG_CONFIG_LIBDIR
+          fi
+          cd vc/src
+          make "$@" wxbuild
+          make "$@" -j"$(nproc)"
+          file Main/veracrypt
+          git -C .. log --oneline -1
+
+      - name: Algorithm self-tests (expected to ${{ matrix.expect }})
+        run: |
+          cd vc/src
+          if ./Main/veracrypt --text --test; then rc=0; else rc=$?; fi
+          echo "self-test exit code: $rc"
+          if [ "${{ matrix.expect }}" = pass ]; then test $rc -eq 0; else test $rc -ne 0; fi
+
+      - name: Official test volumes (created on little-endian)
+        if: matrix.expect == 'pass'
+        run: cd vc && sh ../ci/.github/ci/official-volumes.sh ./src/Main/veracrypt
+
+      - name: Upload binary
+        if: matrix.expect == 'pass'
+        uses: actions/upload-artifact@v4
+        with:
+          name: veracrypt-${{ matrix.name }}
+          path: vc/src/Main/veracrypt
+
+  interop:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    name: interop s390x <-> amd64
+    steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@v4
+        with:
+          path: ci
+
+      - name: Install runtime dependencies
+        run: |
+          sudo sed -i 's/^Types: deb$/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources
+          printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates\nComponents: main universe\nArchitectures: s390x\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/ports.sources
+          sudo dpkg --add-architecture s390x
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static libfuse3-3 libpcsclite1 \
+            libfuse3-3:s390x libpcsclite1:s390x libstdc++6:s390x libgcc-s1:s390x
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: bin
+
+      - name: Volumes made on one byte order open on the other
+        run: |
+          chmod +x bin/*/veracrypt
+          file bin/*/veracrypt
+          sh ci/.github/ci/interop.sh "$PWD/bin/veracrypt-s390x-fix/veracrypt" "$PWD/bin/veracrypt-amd64-fix/veracrypt"
