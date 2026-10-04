@@ -17,7 +17,7 @@ jobs:
         sudo dpkg --add-architecture arm64
         sudo apt-get update
         sudo apt-get install -y g++-aarch64-linux-gnu qemu-user-static pkg-config \
-          libfuse3-dev:arm64 libpcsclite-dev:arm64
+          libfuse3-dev:arm64 libpcsclite-dev:arm64 libstdc++6:arm64 libgcc-s1:arm64
     - name: Download wxWidgets
       run: |
         wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.5/wxWidgets-3.2.5.tar.bz2 -O /tmp/wx.tar.bz2
@@ -25,7 +25,7 @@ jobs:
     - name: Cross-compile (recipe for issue 1515)
       run: |
         export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
-        set -- NOGUI=1 WITHFUSE3=1 WXSTATIC=1 ARCH=aarch64 NOSTRIP=1 \
+        set -- NOGUI=1 WITHFUSE3=1 WXSTATIC=1 ARCH=aarch64 NOSTRIP=1 NOTEST=1 \
           CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
           AR=aarch64-linux-gnu-ar RANLIB=aarch64-linux-gnu-ranlib \
           WX_ROOT=/tmp/wxWidgets-3.2.5 WX_BUILD_DIR=/tmp/wxBuildConsole \
