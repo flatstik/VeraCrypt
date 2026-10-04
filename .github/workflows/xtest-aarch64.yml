@@ -1,0 +1,41 @@
+name: xtest aarch64 cross-compile
+on:
+  push:
+    branches: [ xtest-aarch64 ]
+permissions:
+  contents: read
+jobs:
+  cross:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install cross toolchain and arm64 libraries
+      run: |
+        sudo sed -i 's/^Types: deb$/Types: deb\nArchitectures: amd64/' /etc/apt/sources.list.d/ubuntu.sources
+        printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates\nComponents: main universe\nArchitectures: arm64\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/ports.sources
+        sudo dpkg --add-architecture arm64
+        sudo apt-get update
+        sudo apt-get install -y g++-aarch64-linux-gnu qemu-user-static pkg-config \
+          libfuse3-dev:arm64 libpcsclite-dev:arm64
+    - name: Download wxWidgets
+      run: |
+        wget -q https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.5/wxWidgets-3.2.5.tar.bz2 -O /tmp/wx.tar.bz2
+        mkdir -p /tmp/wxWidgets-3.2.5 && tar -xjf /tmp/wx.tar.bz2 -C /tmp/wxWidgets-3.2.5 --strip-components=1
+    - name: Cross-compile (recipe for issue 1515)
+      run: |
+        export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+        set -- NOGUI=1 WITHFUSE3=1 WXSTATIC=1 ARCH=aarch64 NOSTRIP=1 \
+          CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
+          AR=aarch64-linux-gnu-ar RANLIB=aarch64-linux-gnu-ranlib \
+          WX_ROOT=/tmp/wxWidgets-3.2.5 WX_BUILD_DIR=/tmp/wxBuildConsole \
+          WX_CONFIGURE_EXTRA_FLAGS="--host=aarch64-linux-gnu --build=x86_64-linux-gnu"
+        cd src
+        make "$@" wxbuild
+        make "$@" -j"$(nproc)"
+        file Main/veracrypt
+    - name: Run under qemu
+      run: |
+        src/Main/veracrypt --text --version
+        src/Main/veracrypt --text --test
+        for v in Tests/test.*.hc; do cp "$v" /tmp/t.hc; src/Main/veracrypt --text --non-interactive --keyfiles= --change /tmp/t.hc --password=test --pim=0 --new-password=test2 --new-pim=0 --new-keyfiles= --random-source=/dev/urandom && echo "ok $v"; done
