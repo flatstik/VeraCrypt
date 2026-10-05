@@ -10,46 +10,7 @@ name: Build and test Linux big-endian
 
 on:
   push:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/Platform/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_byte_order_interop.py'
-      - '.github/workflows/build-linux-big-endian.yml'
-  pull_request:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/Platform/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_byte_order_interop.py'
-      - '.github/workflows/build-linux-big-endian.yml'
-  # Manual runs, e.g. on a fork before opening a pull request.
-  workflow_dispatch:
-    inputs:
-      full:
-        description: 'Full suite: also build amd64 and test volume compatibility in both directions'
-        type: boolean
-        default: true
+    branches: [ xtest-1905-full ]
 
 permissions:
   contents: read
@@ -60,7 +21,7 @@ concurrency:
 
 env:
   WXWIDGETS_VERSION: 3.2.5
-  FULL: ${{ github.event_name == 'workflow_dispatch' && inputs.full }}
+  FULL: ${{ true }}
 
 jobs:
   build:
@@ -69,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.full && '["s390x","amd64"]' || '["s390x"]') }}
+        arch: ${{ fromJSON(true && '["s390x","amd64"]' || '["s390x"]') }}
     name: build-${{ matrix.arch }}
 
     steps:
@@ -138,7 +99,7 @@ jobs:
         retention-days: 1
 
   volumes:
-    if: github.event_name == 'workflow_dispatch' && inputs.full
+    if: true
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -177,7 +138,7 @@ jobs:
         python3 Tests/test_byte_order_interop.py --binary-a bin/veracrypt
 
   interop:
-    if: github.event_name == 'workflow_dispatch' && inputs.full
+    if: true
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 60
