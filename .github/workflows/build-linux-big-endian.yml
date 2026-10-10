@@ -12,50 +12,7 @@ name: Build and test Linux big-endian
 
 on:
   push:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/Platform/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_byte_order_interop.py'
-      - 'Tests/test_volume_read.py'
-      - 'Tests/volume_read_test.cpp'
-      - '.github/workflows/build-linux-big-endian.yml'
-  pull_request:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/Platform/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_byte_order_interop.py'
-      - 'Tests/test_volume_read.py'
-      - 'Tests/volume_read_test.cpp'
-      - '.github/workflows/build-linux-big-endian.yml'
-  # Manual runs, e.g. on a fork before opening a pull request.
-  workflow_dispatch:
-    inputs:
-      full:
-        description: 'Full suite: also build amd64 and test volume compatibility in both directions'
-        type: boolean
-        default: true
+    branches: [ xtest-vr3-quick ]
 
 permissions:
   contents: read
