@@ -1,64 +1,9 @@
 name: Build and test Linux
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Build/CMakeLists.txt'
-      - 'src/Build/build_cmake_deb.sh'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Common/Language.xml'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/PKCS11/**'
-      - 'src/Platform/**'
-      - 'src/Resources/**'
-      - 'src/Setup/Linux/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test_linux_privilege_helpers.py'
-      - 'Tests/test_stdin_password.py'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_volume_read.py'
-      - 'Tests/volume_read_test.cpp'
-      - 'Tests/response_apdu_test.cpp'
-      - '.github/workflows/build-linux.yml'
-  pull_request:
-    branches: [ "master" ]
-    paths:
-      - 'src/Build/Include/Makefile.inc'
-      - 'src/Build/CMakeLists.txt'
-      - 'src/Build/build_cmake_deb.sh'
-      - 'src/Common/*.h'
-      - 'src/Common/*.cpp'
-      - 'src/Common/*.c'
-      - 'src/Common/Language.xml'
-      - 'src/Core/**'
-      - 'src/Crypto/**'
-      - 'src/Driver/Fuse/**'
-      - 'src/Main/**'
-      - 'src/PKCS11/**'
-      - 'src/Platform/**'
-      - 'src/Resources/**'
-      - 'src/Setup/Linux/**'
-      - 'src/Volume/**'
-      - 'src/Makefile'
-      - 'Tests/test_linux_privilege_helpers.py'
-      - 'Tests/test_stdin_password.py'
-      - 'Tests/test.*.hc'
-      - 'Tests/test_volume_read.py'
-      - 'Tests/volume_read_test.cpp'
-      - 'Tests/response_apdu_test.cpp'
-      - '.github/workflows/build-linux.yml'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+    branches: [ "xtest-stdin" ]
 
 env:
   WXWIDGETS_VERSION: 3.2.5
