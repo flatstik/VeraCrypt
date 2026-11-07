@@ -1,0 +1,23 @@
+name: xtest macOS syntax check
+on:
+  push:
+    branches: [ "xtest-1982u" ]
+jobs:
+  syntax:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install wxWidgets
+        run: brew install wxwidgets
+      - name: Syntax check
+        working-directory: src
+        run: |
+          failed=0
+          for f in Main/NewDeviceMonitor.cpp Main/GraphicUserInterface.cpp Main/UserPreferences.cpp Main/Forms/Forms.cpp Main/Forms/MainFrame.cpp Main/Forms/PreferencesDialog.cpp Core/Unix/CoreUnix.cpp Core/Unix/CoreService.cpp Core/Unix/CoreServiceRequest.cpp; do
+            if clang++ -std=c++14 -fsyntax-only -DTC_UNIX -DTC_BSD -DTC_MACOSX -DVC_MACOSX_FUSET -DBOOL_DEFINED -I. -I./Main -I./Crypto -I./Crypto/Argon2/include -I./PKCS11 -I./Common $(wx-config --cxxflags) -Wno-deprecated-declarations "$f" 2> err.txt; then
+              echo "RESULT $f ok"
+            else
+              echo "RESULT $f FAILED"; head -30 err.txt; failed=1
+            fi
+          done
+          exit $failed

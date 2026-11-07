@@ -2,7 +2,7 @@ name: Build and test Linux
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "xtest-1982u" ]
     paths:
       - 'src/Build/Include/Makefile.inc'
       - 'src/Build/CMakeLists.txt'
