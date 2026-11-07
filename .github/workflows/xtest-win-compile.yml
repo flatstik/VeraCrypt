@@ -1,0 +1,35 @@
+name: xtest Windows compile check
+on:
+  push:
+    branches: [ "xtest-1982" ]
+jobs:
+  compile:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Install nasm
+        run: choco install nasm -y --no-progress
+      - name: Compile (no link)
+        shell: pwsh
+        working-directory: src
+        run: |
+          $failed = @()
+          $jobs = @(
+            @('Driver\Driver.vcxproj','x64','ClCompile'),
+            @('Mount\Mount.vcxproj','x64','BuildGenerateSources;BuildCompile'),
+            @('Format\Format.vcxproj','x64','BuildGenerateSources;BuildCompile'),
+            @('ExpandVolume\ExpandVolume.vcxproj','x64','BuildGenerateSources;BuildCompile'),
+            @('Setup\Setup.vcxproj','Win32','BuildGenerateSources;BuildCompile'),
+            @('SetupDLL\SetupDLL.vcxproj','Win32','BuildGenerateSources;BuildCompile')
+          )
+          foreach ($j in $jobs) {
+            $p = $j[0]
+            Write-Host "::group::$p"
+            msbuild $p "/t:$($j[2])" /p:Configuration=Release "/p:Platform=$($j[1])" "/p:SolutionDir=$PWD\" /m /v:m /nologo
+            $rc = $LASTEXITCODE
+            Write-Host "::endgroup::"
+            Write-Host "RESULT $p exit=$rc"
+            if ($rc -ne 0) { $failed += $p }
+          }
+          if ($failed.Count) { Write-Host "FAILED: $failed"; exit 1 }
